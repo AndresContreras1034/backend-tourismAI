@@ -14,6 +14,11 @@ URL ML en las variables de entorno de Vercel; no subas claves al repositorio.
 
 ## Planificador Expo y ClaudIA
 
+`GET /ai/expo-weather` actualiza el pronóstico de mañana sin regenerar el
+itinerario ni llamar a DeepSeek. Open-Meteo se consulta con un reintento ante
+errores transitorios; los fallos se guardan en caché por 10 segundos para
+permitir una nueva consulta pronto.
+
 `POST /ai/expo-plan` crea un itinerario de un día para una experiencia elegida
 entre las tres recomendaciones ML. DeepSeek recibe el tipo de viaje, la categoría
 de presupuesto, la compañía y las fichas locales pertinentes. El backend consulta

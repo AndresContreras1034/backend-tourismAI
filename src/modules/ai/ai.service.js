@@ -659,8 +659,78 @@ function getGeneratedPlanValidationIssues(plan) {
 
 let weatherCache = null;
 const WEATHER_CACHE_TTL_MS = 10 * 60_000;
+const WEATHER_FAILURE_CACHE_TTL_MS = 10_000;
+const WEATHER_REQUEST_TIMEOUT_MS = 10_000;
+const WEATHER_RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 
-async function getTomorrowWeather() {
+async function fetchTomorrowWeather(url) {
+  let lastError;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(url, {
+        signal: AbortSignal.timeout(WEATHER_REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt === 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      continue;
+    }
+
+    if (!response.ok) {
+      const error = new Error(`Open-Meteo returned HTTP ${response.status}.`);
+      if (
+        attempt === 1 ||
+        !WEATHER_RETRYABLE_STATUSES.has(response.status)
+      ) {
+        throw error;
+      }
+      lastError = error;
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      continue;
+    }
+
+    try {
+      const result = await response.json();
+      const daily = result?.daily;
+      const weather = {
+        available: true,
+        date: daily?.time?.[1],
+        weather_code: daily?.weather_code?.[1],
+        condition: weatherDescription(daily?.weather_code?.[1]),
+        temp_min_c: daily?.temperature_2m_min?.[1],
+        temp_max_c: daily?.temperature_2m_max?.[1],
+        precipitation_probability_percent:
+          daily?.precipitation_probability_max?.[1],
+        wind_speed_kmh: daily?.wind_speed_10m_max?.[1],
+        source: "Open-Meteo",
+      };
+      if (
+        typeof weather.date !== "string" ||
+        !Number.isInteger(weather.weather_code) ||
+        !Number.isFinite(weather.temp_min_c) ||
+        !Number.isFinite(weather.temp_max_c) ||
+        !Number.isFinite(weather.precipitation_probability_percent) ||
+        !Number.isFinite(weather.wind_speed_kmh)
+      ) {
+        throw new Error("Open-Meteo returned an incomplete forecast.");
+      }
+      return weather;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 1) throw error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  }
+
+  throw lastError;
+}
+
+export async function getTomorrowWeather() {
   if (
     weatherCache &&
     Date.now() - weatherCache.cachedAt < weatherCache.ttlMs
@@ -678,37 +748,7 @@ async function getTomorrowWeather() {
   }).toString();
 
   try {
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!response.ok) {
-      throw new Error(`Open-Meteo returned HTTP ${response.status}.`);
-    }
-
-    const result = await response.json();
-    const daily = result?.daily;
-    const weather = {
-      available: true,
-      date: daily?.time?.[1],
-      weather_code: daily?.weather_code?.[1],
-      condition: weatherDescription(daily?.weather_code?.[1]),
-      temp_min_c: daily?.temperature_2m_min?.[1],
-      temp_max_c: daily?.temperature_2m_max?.[1],
-      precipitation_probability_percent:
-        daily?.precipitation_probability_max?.[1],
-      wind_speed_kmh: daily?.wind_speed_10m_max?.[1],
-      source: "Open-Meteo",
-    };
-    if (
-      typeof weather.date !== "string" ||
-      !Number.isInteger(weather.weather_code) ||
-      !Number.isFinite(weather.temp_min_c) ||
-      !Number.isFinite(weather.temp_max_c) ||
-      !Number.isFinite(weather.precipitation_probability_percent) ||
-      !Number.isFinite(weather.wind_speed_kmh)
-    ) {
-      throw new Error("Open-Meteo returned an incomplete forecast.");
-    }
+    const weather = await fetchTomorrowWeather(url);
     weatherCache = {
       cachedAt: Date.now(),
       ttlMs: WEATHER_CACHE_TTL_MS,
@@ -723,7 +763,7 @@ async function getTomorrowWeather() {
     };
     weatherCache = {
       cachedAt: Date.now(),
-      ttlMs: 60_000,
+      ttlMs: WEATHER_FAILURE_CACHE_TTL_MS,
       value: unavailableWeather,
     };
     return unavailableWeather;

@@ -4,6 +4,7 @@ import multer from "multer";
 import {
   generateExpoChatReply,
   generateExpoPlan,
+  getTomorrowWeather,
 } from "./ai.service.js";
 
 const router = express.Router();
@@ -20,6 +21,7 @@ const EXPO_TRAVEL_TYPES = new Set([
 const EXPO_RATE_WINDOW_MS = 60_000;
 const expoRequests = new Map();
 const expoChatRequests = new Map();
+const expoWeatherRequests = new Map();
 const EXPO_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 const expoPhotoUpload = multer({
   storage: multer.memoryStorage(),
@@ -73,6 +75,17 @@ function allowExpoRequest(ip, now = Date.now()) {
 
 function allowExpoChatRequest(ip, now = Date.now()) {
   return allowLimitedRequest(expoChatRequests, ip, 12, now);
+}
+
+function limitExpoWeather(req, res, next) {
+  if (!allowLimitedRequest(expoWeatherRequests, req.ip, 30)) {
+    res.set("Retry-After", "60");
+    return res.status(429).json({
+      success: false,
+      message: "El clima alcanzó el límite temporal. Inténtalo en un minuto.",
+    });
+  }
+  next();
 }
 
 function limitExpoChat(req, res, next) {
@@ -453,6 +466,11 @@ function sanitizeChatContext(context) {
       : "",
   };
 }
+
+router.get("/expo-weather", limitExpoWeather, async (_req, res) => {
+  const weather = await getTomorrowWeather();
+  return res.status(200).json({ success: true, data: weather });
+});
 
 router.post("/expo-plan", async (req, res) => {
   if (!allowExpoRequest(req.ip)) {

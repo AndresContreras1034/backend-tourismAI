@@ -13,7 +13,7 @@ const allowedOrigins = new Set([
     .map((origin) => origin.trim())
     .filter(Boolean),
 ]);
-const betaAiPaths = new Set(["/expo-plan", "/expo-chat"]);
+const betaAiPaths = new Set(["/expo-plan", "/expo-chat", "/expo-weather"]);
 
 app.use(
   cors({
