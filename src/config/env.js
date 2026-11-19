@@ -2,6 +2,7 @@
 import dotenv from "dotenv";
 
 dotenv.config();
+dotenv.config({ path: ".env.local" });
 
 // 🔥 helper para leer variables con validación
 const getEnv = (key, required = true) => {
@@ -33,12 +34,6 @@ const env = {
   NODE_ENV: getEnv("NODE_ENV", false) || "development",
 };
 
-// 🔥 LOG resumen al iniciar servidor
-console.log("\n📦 [ENV] Config cargada:");
-console.log("--------------------------------");
-Object.entries(env).forEach(([key, value]) => {
-  console.log(`${key}: ${value}`);
-});
-console.log("--------------------------------\n");
+console.log("[ENV] Configuración cargada.");
 
 export default env;

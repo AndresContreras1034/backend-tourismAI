@@ -17,6 +17,7 @@ import profileRoutes from "./modules/onboarding/profile.routes.js";
 import planRoutes from "./modules/plans/plan.routes.js";
 import reviewRoutes from "./modules/reviews/review.routes.js";
 import mfaRoutes from "./modules/mfa/mfa.routes.js";
+import aiRoutes from "./modules/ai/ai.routes.js";
 
 // 🧠 Utils
 import { logInfo, logSuccess, logError } from "./utils/logger.js";
@@ -84,6 +85,7 @@ app.use("/auth", authRoutes);
 app.use("/mfa", mfaRoutes);
 
 // MODULES
+app.use("/ai", aiRoutes);
 app.use("/user", userRoutes);
 app.use("/profile", profileRoutes);
 app.use("/plans", planRoutes);
