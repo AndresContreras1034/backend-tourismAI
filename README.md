@@ -1,5 +1,17 @@
 # EstoTourism AI Backend
 
+## Beta pública sin cuentas
+
+La beta se inicia con `npm run start:beta`. Este servidor publica únicamente
+los endpoints Expo de itinerario y ClaudIA; no conecta a la base de datos ni
+monta registro, inicio de sesión, perfiles o MFA. Para el servidor beta solo se
+requieren `DEEPSEEK_API_KEY` y, opcionalmente, `DEEPSEEK_MODEL`.
+
+El servicio ML está en `ml-service/` y utiliza el dataset incluido para entrenar
+el recomendador al arrancar. `render.yaml` declara ambos servicios para Render.
+Configura `VITE_API_URL` con la URL del backend y `VITE_AI_SERVICE_URL` con la
+URL ML en las variables de entorno de Vercel; no subas claves al repositorio.
+
 ## Planificador Expo y ClaudIA
 
 `POST /ai/expo-plan` crea un itinerario de un día para una experiencia elegida
@@ -17,11 +29,11 @@ en memoria para analizarla con DeepSeek; no la guarda en disco ni en la base de
 datos. La clave permanece en el backend; no la incluyas en el frontend, en
 commits ni en mensajes.
 
-Configura `DEEPSEEK_API_KEY` y `DEEPSEEK_MODEL=deepseek-flash` en un `.env` local
-ignorado por Git. El modelo Flash se usa con el razonamiento desactivado para
-priorizar rapidez. No pegues la clave en el chat. Reinicia `npm run dev` después
-de editar la configuración. El frontend Expo debe tener `VITE_API_URL`
-apuntando a este backend.
+Configura `DEEPSEEK_API_KEY` y `DEEPSEEK_MODEL=deepseek-flash` en el entorno del
+servidor o en un `.env` local ignorado por Git. El modelo Flash se usa con el
+razonamiento desactivado para priorizar rapidez. No pegues la clave en el chat.
+Reinicia `npm run dev` después de editar la configuración. El frontend Expo debe
+tener `VITE_API_URL` apuntando a este backend.
 
 ```powershell
 npm run dev

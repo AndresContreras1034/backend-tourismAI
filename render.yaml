@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: tourism-ai-beta-backend
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run start:beta
+    healthCheckPath: /
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DEEPSEEK_MODEL
+        value: deepseek-flash
+      - key: FRONTEND_ORIGINS
+        value: https://frontend-tourism-ai.vercel.app
+
+  - type: web
+    name: tourism-ai-beta-ml
+    runtime: python
+    rootDir: ml-service
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: FRONTEND_ORIGINS
+        value: https://frontend-tourism-ai.vercel.app

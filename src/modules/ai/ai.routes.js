@@ -1,7 +1,6 @@
 // ai routes
 import express from "express";
 import multer from "multer";
-import { authMiddleware } from "../auth/auth.middleware.js";
 import {
   generateExpoChatReply,
   generateExpoPlan,
@@ -41,6 +40,12 @@ const expoPhotoUpload = multer({
 });
 
 console.log("🤖 [AI ROUTES] Inicializando rutas de IA");
+
+function requireAuth(req, res, next) {
+  import("../auth/auth.middleware.js")
+    .then(({ authMiddleware }) => authMiddleware(req, res, next))
+    .catch(next);
+}
 
 function allowLimitedRequest(requests, ip, limit, now = Date.now()) {
   const current = requests.get(ip);
@@ -577,7 +582,7 @@ router.post("/expo-chat", limitExpoChat, parseExpoChatForm, async (req, res) => 
 });
 
 // 🔥 GENERAR PLANES PERSONALIZADOS
-router.post("/generate-plans", authMiddleware, async (req, res) => {
+router.post("/generate-plans", requireAuth, async (req, res) => {
   try {
     console.log("🧠 [AI] Solicitud de generación de planes recibida");
 
@@ -627,7 +632,7 @@ router.post("/generate-plans", authMiddleware, async (req, res) => {
 });
 
 // 🔥 TEST DE IA (debug)
-router.get("/test", authMiddleware, (req, res) => {
+router.get("/test", requireAuth, (req, res) => {
   console.log("🧪 [AI] Test endpoint ejecutado");
 
   res.json({
