@@ -1,55 +1,210 @@
-# EstoTourism AI Backend
+# Tourism AI Backend
 
-## Beta pública sin cuentas
+Backend services for the Tourism AI application: an Express.js Node.js API for itineraries and assistant interactions, plus a FastAPI recommendation service trained with a Bogotá tourism rating dataset.
 
-La beta se inicia con `npm run start:beta`. Este servidor publica únicamente
-los endpoints Expo de itinerario y ClaudIA; no conecta a la base de datos ni
-monta registro, inicio de sesión, perfiles o MFA. Para el servidor beta solo se
-requieren `DEEPSEEK_API_KEY` y, opcionalmente, `DEEPSEEK_MODEL`.
+## Live Components
 
-El servicio ML está en `ml-service/` y utiliza el dataset incluido para entrenar
-el recomendador al arrancar. `render.yaml` declara ambos servicios para Render.
-Configura `VITE_API_URL` con la URL del backend y `VITE_AI_SERVICE_URL` con la
-URL ML en las variables de entorno de Vercel; no subas claves al repositorio.
+- [Frontend](https://github.com/AndresContreras1034/frontend-tourismAI)
+- [Production frontend](https://frontend-tourism-ai.vercel.app)
+- Beta backend and ML service configured for deployment through `render.yaml`
 
-## Planificador Expo y ClaudIA
+## Services
 
-`GET /ai/expo-weather` actualiza el pronóstico de mañana sin regenerar el
-itinerario ni llamar a DeepSeek. Open-Meteo se consulta con un reintento ante
-errores transitorios; los fallos se guardan en caché por 10 segundos para
-permitir una nueva consulta pronto.
+### Beta Express API
 
-`POST /ai/expo-plan` crea un itinerario de un día para una experiencia elegida
-entre las tres recomendaciones ML. DeepSeek recibe el tipo de viaje, la categoría
-de presupuesto, la compañía y las fichas locales pertinentes. El backend consulta
-el pronóstico de mañana de Bogotá en Open-Meteo y lo incluye en las
-recomendaciones; si se prevé lluvia, pide adaptar las actividades. Si el servicio
-del clima no está disponible, la respuesta lo indica en vez de inventar un
-pronóstico. También calcula un índice heurístico de horarios, presupuesto, clima
-y distancia geográfica; no es una puntuación en tiempo real.
+The public beta server starts with:
 
-`POST /ai/expo-chat` conecta a ClaudIA con DeepSeek y le proporciona el plan y
-el pronóstico como contexto. Acepta una foto JPEG, PNG, GIF o WebP de hasta 5 MB
-en memoria para analizarla con DeepSeek; no la guarda en disco ni en la base de
-datos. La clave permanece en el backend; no la incluyas en el frontend, en
-commits ni en mensajes.
+```powershell
+npm run start:beta
+```
 
-Configura `DEEPSEEK_API_KEY` y `DEEPSEEK_MODEL=deepseek-flash` en el entorno del
-servidor o en un `.env` local ignorado por Git. El modelo Flash se usa con el
-razonamiento desactivado para priorizar rapidez. No pegues la clave en el chat.
-Reinicia `npm run dev` después de editar la configuración. El frontend Expo debe
-tener `VITE_API_URL` apuntando a este backend.
+It exposes only the public Expo itinerary, weather, and chat endpoints. It does not require PostgreSQL or mount authentication and profile routes.
+
+Available prefix:
+
+- `GET /` — service health
+- `POST /ai/expo-plan` — generate a plan
+- `POST /ai/expo-chat` — chatbot interaction
+- `GET /ai/expo-weather` — tomorrow weather
+
+### Full Express API
+
+The complete server starts with:
+
+```powershell
+npm run dev
+# or
+npm start
+```
+
+It includes authentication, MFA, PostgreSQL-backed users and profiles, plans, reviews, and AI routes. Configure PostgreSQL and JWT variables before use.
+
+### FastAPI Recommendation Service
+
+The `ml-service` trains a `RandomForestRegressor` from the included tourism dataset when the process starts.
+
+Endpoints:
+
+- `GET /` — service health and dataset summary
+- `GET /catalog` — available plans and travel categories
+- `POST /recommendations` — ranked plan recommendations
+
+Start it separately:
+
+```powershell
+cd ml-service
+py -m pip install -r requirements.txt
+py -m uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+    UI[React Frontend] --> NODE[Express API]
+    NODE --> AI[External AI Provider]
+    NODE --> WEATHER[Open-Meteo]
+    NODE --> MAPS[Nominatim and Overpass]
+    UI --> ML[FastAPI Recommendation API]
+    ML --> DATA[Tourism Rating Dataset]
+    FULL[Full Server] --> DB[(PostgreSQL)]
+    FULL --> AUTH[JWT and TOTP]
+```
+
+## Public Beta Features
+
+- Validated Expo plan requests
+- Weather lookup with caching and retry behavior
+- Local image upload limited to 5 MB
+- JPEG, PNG, GIF, and WebP format validation
+- Photo analysis through the configured AI provider
+- In-memory rate limits
+- Open-Meteo, Nominatim, and Overpass integrations
+- CORS restrictions for configured frontend origins
+
+The public beta keeps photos in memory only and does not store them on disk or in PostgreSQL.
+
+## Technology Stack
+
+| Technology | Role |
+|---|---|
+| Node.js | Express runtime |
+| Express | REST API |
+| Multer | In-memory photo uploads |
+| PostgreSQL | Full-server data |
+| JWT | Authentication |
+| Speakeasy | TOTP MFA |
+| Python | Recommendation runtime |
+| FastAPI | ML HTTP API |
+| Pandas | Dataset processing |
+| Scikit-learn | Random forest model |
+| Open-Meteo | Weather provider |
+| OpenStreetMap | Geographic lookup |
+
+## Project Structure
+
+```text
+src/
+  beta-app.js             Public beta Express application
+  beta-server.js          Beta server entry point
+  app.js                  Full Express application
+  server.js               Full server entry point
+  modules/                Auth, users, profiles, plans, AI, and reviews
+  middleware/             Shared error handling
+  config/                 Environment and database configuration
+ml-service/
+  app.py                  FastAPI application
+  engine/                 Dataset loading and ranking model
+  routes/                 Recommendation endpoints
+  tests/                  Recommendation engine tests
+  data/                   Tourism rating dataset
+render.yaml               Render beta deployment
+```
+
+## Environment Variables
+
+`.env.example` contains the public beta variables:
+
+```dotenv
+PORT=3000
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-flash
+FRONTEND_ORIGINS=https://frontend-tourism-ai.vercel.app
+```
+
+The full server additionally requires PostgreSQL and JWT variables such as:
+
+```dotenv
+DB_HOST=
+DB_PORT=5432
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+JWT_SECRET=
+JWT_EXPIRES_IN=7d
+```
+
+Never commit API keys or database passwords.
+
+## Installation
+
+```powershell
+npm install
+Copy-Item .env.example .env
+npm run start:beta
+```
+
+For local development:
 
 ```powershell
 npm run dev
 ```
 
-Los endpoints validan sus entradas y limitan las solicitudes por IP. DeepSeek
-recibe un reintento acotado ante errores temporales del proveedor y una
-corrección del formato si el plan generado no cumple el contrato. Las
-coordenadas se resuelven desde OpenStreetMap Nominatim o un catálogo local
-aproximado; las consultas Nominatim se serializan para respetar su límite de
-frecuencia. Los parqueaderos se consultan en OpenStreetMap Overpass y pueden
-estar incompletos. El mapa Leaflet muestra líneas rectas entre paradas, no rutas
-reales de calles ni transporte. Los precios son estimaciones; confirma rutas,
-operación, acceso y tarifas antes del viaje.
+## ML Service
+
+Create an isolated environment:
+
+```powershell
+cd ml-service
+py -m venv .venv
+.venv\Scripts\activate
+py -m pip install -r requirements.txt
+py -m uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
+Run recommendation tests:
+
+```powershell
+cd ml-service
+python -m unittest discover -s tests -p "test_*.py"
+```
+
+## Frontend Configuration
+
+Configure the frontend with public service URLs:
+
+```dotenv
+VITE_API_URL=https://your-beta-backend.example
+VITE_AI_SERVICE_URL=https://your-ml-service.example
+```
+
+Keep provider credentials in the backend environment.
+
+## Deployment
+
+`render.yaml` defines two free web services:
+
+- `tourism-ai-beta-backend`
+- `tourism-ai-beta-ml`
+
+Configure `DEEPSEEK_API_KEY` as a private Render environment value. Configure the deployed frontend origins with `FRONTEND_ORIGINS`.
+
+## Security and Data Notes
+
+- Provider API keys must remain in backend environment variables.
+- Browser variables beginning with `VITE_` are public.
+- CORS must include only intended frontend origins.
+- Uploaded photos are processed in memory and should not be persisted.
+- Map coordinates and parking locations are approximate.
+- Prices and routes are suggestions and must be verified before travel.
+- Free deployments may suspend and require cold-start time.

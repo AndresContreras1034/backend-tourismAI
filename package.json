@@ -1,7 +1,8 @@
 {
   "name": "tourism-ai-backend",
   "version": "1.0.0",
-  "description": "Backend for AI-powered tourism recommendation system",
+  "description": "Node.js backend and FastAPI recommendation service for the Tourism AI platform",
+  "homepage": "https://github.com/AndresContreras1034/backend-tourismAI#readme",
   "main": "src/server.js",
   "type": "module",
   "scripts": {

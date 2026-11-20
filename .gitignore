@@ -1,2 +1,12 @@
 .env
-.env.local
+.env.*
+!.env.example
+
+node_modules/
+npm-debug.log*
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
